@@ -51,10 +51,10 @@ public class Exon implements Comparator<Exon> {
                 + " | end: " + e.end + " | strand: " + e.strand + " |");
     }
 
+    // compare method not used, because we use no TreeSet<Exon>
     @Override
     public int compare(Exon e1, Exon e2) {
         // Sorts Exons ascending to their start-points
         return Integer.compare(e1.start, e2.start);
     }
-
 }

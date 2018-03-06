@@ -5,7 +5,6 @@ public class Transcript {
     public String transcript_id;
     // String = exon Ids
     public HashMap<String, Exon> exons = new HashMap<>();
-    public HashMap<String, CDS> cds = new HashMap<>();
 
     // Constructor
     public Transcript(String transcript_id, HashMap<String, Exon> exons) {
