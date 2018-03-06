@@ -12,7 +12,8 @@ public class CDS implements Comparator<CDS> {
     public String gene_name;
 
     // Constructor
-    public CDS(String chr, int start, int end, String strand, String protein_id, String transcript_id, String transcript_name, String gene_id, String gene_name) {
+    public CDS(String chr, int start, int end, String strand, String protein_id, String transcript_id,
+               String transcript_name, String gene_id, String gene_name) {
         super();
         this.chr = chr;
         this.start = start;
@@ -40,6 +41,7 @@ public class CDS implements Comparator<CDS> {
 
     // For new TreeSet<>(new CDS()); in Gene-class
     public CDS() {
+        super();
     }
 
     @Override

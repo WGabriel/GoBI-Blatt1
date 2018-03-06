@@ -1,30 +1,28 @@
 import java.util.HashMap;
-import java.util.TreeSet;
+import java.util.HashSet;
 
 public class Gene {
-
-	public String gene_id;
-	// String = transcript Ids
-	public HashMap<String, Transcript> transcripts = new HashMap<>();
-    // Not HashMap<String, CDS> because there's no unique identifier in CDS
-    public TreeSet<CDS> cds = new TreeSet<>(new CDS());
-
+    public String gene_id;
+    // key = protein id, value = proteins
+    public HashMap<String, Protein> proteins = new HashMap<>();
+    // for ntrans
+    public HashSet<String> transcripts = new HashSet<>();
 
     // Constructor
-	public Gene(String gene_id, HashMap<String, Transcript> transcripts) {
-		super();
-		this.gene_id = gene_id;
-		this.transcripts = transcripts;
-	}
+    public Gene(String gene_id, HashMap<String, Protein> proteins) {
+        super();
+        this.gene_id = gene_id;
+        this.proteins = proteins;
+    }
 
-	// Constructor for cloning a Gene
-	public Gene(Gene another) {
-			//Deep copy of Exon list required
-			for (HashMap.Entry<String, Transcript> t : another.transcripts.entrySet()) {
-				this.transcripts.put(t.getKey(), new Transcript(t.getValue()));
-			}
-			this.gene_id = another.gene_id;
-		}
+    // Constructor for cloning a Gene
+    public Gene(Gene another) {
+        this.gene_id = another.gene_id;
+        //Deep copy of Protein list required
+        for (HashMap.Entry<String, Protein> p : another.proteins.entrySet()) {
+            this.proteins.put(p.getKey(), new Protein(p.getValue()));
+        }
+    }
 
 
 }
