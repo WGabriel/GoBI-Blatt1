@@ -1,4 +1,6 @@
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
 
 public class CDS implements Comparator<CDS> {
     public String chr;
@@ -62,4 +64,30 @@ public class CDS implements Comparator<CDS> {
         }
     }
 
+    public static HashSet<CDS> intersection(HashSet<CDS> set1, HashSet<CDS> set2) {
+        HashSet<CDS> intersection = new HashSet<>();
+        for (CDS cds_set1 : set1) {
+            for (CDS cds_set2 : set2) {
+                // compare is non-static
+                if (new CDS().compare(cds_set1, cds_set2) == 0) {
+                    intersection.add(new CDS(cds_set1));
+                }
+            }
+        }
+        return intersection;
+    }
+
+    public static HashSet<CDS> complementarySet(HashSet<CDS> set1, HashSet<CDS> set2) {
+        HashSet<CDS> result = new HashSet<>(set1);
+        Iterator<CDS> iterator = result.iterator();
+        while (iterator.hasNext()) {
+            CDS cds_set1 = iterator.next();
+            for (CDS cds_set2 : set2) {
+                if (new CDS().compare(cds_set1, cds_set2) == 0) {
+                    iterator.remove();
+                }
+            }
+        }
+        return result;
+    }
 }

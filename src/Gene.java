@@ -9,6 +9,12 @@ public class Gene {
     public HashSet<String> transcripts = new HashSet<>();
 
     // Constructor
+    public Gene(String gene_id) {
+        super();
+        this.gene_id = gene_id;
+    }
+
+    // Constructor
     public Gene(String gene_id, HashMap<String, Protein> proteins) {
         super();
         this.gene_id = gene_id;

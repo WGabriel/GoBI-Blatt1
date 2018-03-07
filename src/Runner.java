@@ -40,31 +40,37 @@ public class Runner {
 
     private static void findIntrons(HashMap<String, Gene> allGenes) {
         System.out.println("|findIntrons| Started...");
+        int intronCounter = 0;
         for (Gene gene : allGenes.values()) {
+            //System.out.println("Current gene: " + gene.gene_id);
             for (Protein protein : gene.proteins.values()) {
+                //System.out.println("Current protein: " + protein.protein_id);
                 //Go through all proteins
                 CDS previousCds = null;
                 for (CDS currentCDS : protein.cdss) {
+                    // System.out.println("Current CDS: " + currentCDS.start + "-" + currentCDS.end);
                     // Go through all CDS
                     if (previousCds != null) {
-                        if (currentCDS.start < previousCds.end) {
+                        if (previousCds.end < currentCDS.start) {
                             protein.introns.add(new Intron(previousCds.end, currentCDS.start));
-                            System.out.println("intron added");
+                            //System.out.println("Intron added to Protein: " + protein.protein_id + ". Intr: " + previousCds.end + "-" + currentCDS.start);
+                            intronCounter++;
                         } else {
                             System.err.println("|findIntrons| Intron start > Intron end. In CDS: " + currentCDS.start + "-" + currentCDS.end + " (" + currentCDS.protein_id + ")");
                         }
-                        previousCds = new CDS(currentCDS);
                     }
+                    previousCds = new CDS(currentCDS);
                 }
             }
         }
-        System.out.println("|findIntrons| Finished.");
+        System.out.println("|findIntrons| Finished. Added " + intronCounter + " Introns.");
     }
 
     private static HashSet<OutputLine> getOutput(HashMap<String, Gene> allGenes) {
         HashSet<OutputLine> result = new HashSet<>();
         for (Gene gene : allGenes.values()) {
             for (Protein protein : gene.proteins.values()) {
+                System.out.println("Going through introns in protein: " + protein.protein_id);
                 for (Intron intr : protein.introns) {
                     // For every Intron
                     OutputLine l = new OutputLine();
@@ -85,43 +91,35 @@ public class Runner {
                     l.max_skipped_base = Integer.MIN_VALUE;
 
                     for (Protein tempProtein : gene.proteins.values()) {
+                        // System.out.println("\t...checking against tempProtein: " + tempProtein.protein_id + " containing " + tempProtein.cdss.size() + " CDS's.");
                         // find leftIntronBorder, rightIntronBorder, withinIntronRange
                         HashSet<CDS> leftIntronBorder = new HashSet<>();
                         HashSet<CDS> rightIntronBorder = new HashSet<>();
+                        // contains skipped Exons
                         HashSet<CDS> withinIntronRange = new HashSet<>();
                         if (!tempProtein.protein_id.equals(protein.protein_id)) {
                             for (CDS cds : tempProtein.cdss) {
-                                if (cds.end == intr.start)
+                                if (cds.end == intr.start || cds.end == intr.start + 1 || cds.end == intr.start - 1)
                                     leftIntronBorder.add(new CDS(cds));
-                                else if (cds.start == intr.end)
+                                else if (cds.start == intr.end || cds.start == intr.end + 1 || cds.start == intr.end - 1)
                                     rightIntronBorder.add(new CDS(cds));
                                 else if (cds.start >= intr.start && cds.end <= intr.end)
                                     withinIntronRange.add(new CDS(cds));
                             }
                         }
 
-                        //skipped CDS -> Protein-Intersection in lefIntronBorder, rightIntronBorder and withinIntronRange
-                        HashSet<CDS> skippedCDS = new HashSet<>(leftIntronBorder);
-                        skippedCDS.retainAll(rightIntronBorder);
-                        skippedCDS.retainAll(withinIntronRange);
-
-                        if (!skippedCDS.isEmpty()) {
-                            if (skippedCDS.size() < l.min_skipped_exon)
-                                l.min_skipped_exon = skippedCDS.size();
-                            if (skippedCDS.size() > l.max_skipped_exon)
-                                l.max_skipped_exon = skippedCDS.size();
+                        if (!withinIntronRange.isEmpty()) {
+                            if (withinIntronRange.size() < l.min_skipped_exon)
+                                l.min_skipped_exon = withinIntronRange.size();
+                            if (withinIntronRange.size() > l.max_skipped_exon)
+                                l.max_skipped_exon = withinIntronRange.size();
 
                             // joint size of all skipped CDS
                             int jointLengthCDS = 0;
-                            CDS previousSkippedCDS = null;
-                            for (CDS aSkippedCDS : skippedCDS) {
+                            for (CDS aSkippedCDS : withinIntronRange) {
                                 jointLengthCDS += (aSkippedCDS.end - aSkippedCDS.start);
                                 l.wt_prots.add(aSkippedCDS.protein_id);
-
-                                if (previousSkippedCDS != null) {
-                                    l.wt.add(new Intron(previousSkippedCDS.end, aSkippedCDS.start));
-                                }
-                                previousSkippedCDS = aSkippedCDS;
+                                l.wt.add(new Intron(aSkippedCDS.start, aSkippedCDS.end));
                             }
 
                             if (jointLengthCDS < l.min_skipped_base)
@@ -130,12 +128,11 @@ public class Runner {
                                 l.max_skipped_base = jointLengthCDS;
 
                             // gather sv_prots
-                            HashSet<CDS> sv_prots = new HashSet<>(leftIntronBorder);
-                            sv_prots.retainAll(rightIntronBorder);
-                            sv_prots.removeAll(skippedCDS);
-                            for (CDS cds : sv_prots) {
+                            for (CDS cds : leftIntronBorder)
                                 l.sv_prots.add(cds.protein_id);
-                            }
+                            for (CDS cds : rightIntronBorder)
+                                l.sv_prots.add(cds.protein_id);
+                            l.sv_prots.add(protein.protein_id);
 
                             // error checking
                             if (l.gene_id.isEmpty() || l.gene_symbol.isEmpty() || l.chromosome.isEmpty() || l.strand.isEmpty()
@@ -144,6 +141,9 @@ public class Runner {
                                     || l.max_skipped_exon < 1) {
                                 System.err.println("|getOutput| One value in OutputLine is empty. Intron: " + intr.start + "-" + intr.end);
                             }
+//                            System.out.println("Line: " + l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t"
+//                                    + l.nprots + "\t" + l.ntrans + "\t" + l.sv.start + "-" + l.sv.end + "\t" + l.min_skipped_base + "\t"
+//                                    + l.max_skipped_base + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon);
                             result.add(l);
                         }
                     }
@@ -206,6 +206,15 @@ public class Runner {
                         }
                     }
 
+                    // Update ntrans
+                    if (!transcript_id.isEmpty() && !gene_id.isEmpty()) {
+                        if (!allGenes.containsKey(gene_id)) {
+                            allGenes.put(gene_id, new Gene(gene_id));
+                            geneCounter++;
+                        }
+                        allGenes.get(gene_id).transcripts.add(transcript_id);
+                    }
+
                     // -------For lines, which are CDS:-------
                     if (feature.equalsIgnoreCase("CDS")) {
                         // Construct cds and add to exonList
@@ -215,40 +224,20 @@ public class Runner {
                             System.err.println("CDS in line " + linecounter + " has an empty value!");
                         }
                         // Create data structure allGenes, contains proteins, contains cdss
-                        if (!allGenes.containsKey(cds.gene_id)) {
-                            // add a new gene to allGenes, which first requires a set of Proteins, which requires a set of CDS
+                        // check, if existing gene already contains the found transcript
+                        Gene currentGene = allGenes.get(cds.gene_id);
+                        if (!currentGene.proteins.containsKey(cds.protein_id)) {
+                            // add a new protein to proteins, which first requires a set of cdss
                             TreeSet<CDS> cdss = new TreeSet<>(new CDS());
                             cdss.add(new CDS(cds));
 
-                            HashMap<String, Protein> proteins = new HashMap<>();
-                            proteins.put(cds.protein_id, new Protein(cds.protein_id, cdss));
-
-                            allGenes.put(cds.gene_id, new Gene(cds.gene_id, proteins));
-                            geneCounter++;
+                            currentGene.proteins.put(cds.protein_id, new Protein(cds.protein_id, cdss));
                             proteinCounter++;
                             cdsCounter++;
-
-                            allGenes.get(cds.gene_id).transcripts.add(cds.transcript_id);
                         } else {
-                            // check, if existing gene already contains the found transcript
-                            Gene currentGene = allGenes.get(cds.gene_id);
-                            if (!currentGene.proteins.containsKey(cds.protein_id)) {
-                                // add a new protein to proteins, which first requires a set of cdss
-                                TreeSet<CDS> cdss = new TreeSet<>(new CDS());
-                                cdss.add(new CDS(cds));
-
-                                currentGene.proteins.put(cds.protein_id, new Protein(cds.protein_id, cdss));
-                                proteinCounter++;
-                                cdsCounter++;
-
-                                allGenes.get(cds.gene_id).transcripts.add(cds.transcript_id);
-                            } else {
-                                // If protein already exists, just add new CDS to this proteins
-                                currentGene.proteins.get(cds.protein_id).cdss.add(new CDS(cds));
-                                cdsCounter++;
-
-                                allGenes.get(cds.gene_id).transcripts.add(cds.transcript_id);
-                            }
+                            // If protein already exists, just add new CDS to this proteins
+                            currentGene.proteins.get(cds.protein_id).cdss.add(new CDS(cds));
+                            cdsCounter++;
                         }
                     }
                 }
@@ -272,37 +261,30 @@ public class Runner {
             for (OutputLine l : outputLines) {
                 // Convert the HashSet<String> wt_prots to String
                 String wt_prots_string = "";
-                if (l.wt_prots != null) {
-                    for (String s : l.wt_prots) {
-                        wt_prots_string = wt_prots_string.concat(s).concat("|");
-                    }
-                    // crop last "|"
-                    if (wt_prots_string.endsWith("|")) {
-                        wt_prots_string = wt_prots_string.substring(0, wt_prots_string.length() - 1);
-                    }
+                for (String s : l.wt_prots) {
+                    wt_prots_string = wt_prots_string.concat(s).concat("|");
+                }
+                // crop last "|"
+                if (wt_prots_string.endsWith("|")) {
+                    wt_prots_string = wt_prots_string.substring(0, wt_prots_string.length() - 1);
                 }
 
                 // Convert the HashSet<String> sv_prots to String
                 String sv_prots_string = "";
-                if (l.sv_prots != null) {
-                    for (String s : l.sv_prots) {
-                        sv_prots_string = sv_prots_string.concat(s).concat("|");
-                    }
-                    // crop last "|"
-                    if (sv_prots_string.endsWith("|")) {
-                        sv_prots_string = sv_prots_string.substring(0, sv_prots_string.length() - 1);
-                    }
+                for (String s : l.sv_prots) {
+                    sv_prots_string = sv_prots_string.concat(s).concat("|");
+                }
+                // crop last "|"
+                if (sv_prots_string.endsWith("|")) {
+                    sv_prots_string = sv_prots_string.substring(0, sv_prots_string.length() - 1);
                 }
 
                 // Convert the HashSet<String> wt_prots to String
-                String wt_string = "";
-                if (l.wt != null) {
-                    wt_string = Integer.toString(l.sv.start);
-                    for (Intron intr : l.wt) {
-                        wt_prots_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end);
-                    }
-                    wt_string += ":" + Integer.toString(l.sv.end);
+                String wt_string = Integer.toString(l.sv.start);
+                for (Intron intr : l.wt) {
+                    wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end);
                 }
+                wt_string += ":" + Integer.toString(l.sv.end);
 
                 String thisLine = l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand
                         + "\t" + l.nprots + "\t" + l.ntrans + "\t" + (l.sv.start + 1) + ":" + l.sv.end + "\t"

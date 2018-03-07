@@ -4,7 +4,7 @@ public class Protein {
     public String protein_id;
     // Not HashMap<String, CDS> because there's no unique identifier in CDS
     public TreeSet<CDS> cdss = new TreeSet<>(new CDS());
-    public TreeSet<Intron> introns = new TreeSet<>();
+    public TreeSet<Intron> introns = new TreeSet<>(new Intron());
 
     // Constructor
     public Protein(String protein_id, TreeSet<CDS> cdss) {
