@@ -44,19 +44,19 @@ public class Runner {
         for (Gene gene : allGenes.values()) {
             //System.out.println("Current gene: " + gene.gene_id);
             for (Protein protein : gene.proteins.values()) {
-                //System.out.println("Current protein: " + protein.protein_id);
-                //Go through all proteins
+                // Go through all proteins
+                // System.out.println("Current protein: " + protein.protein_id);
                 CDS previousCds = null;
                 for (CDS currentCDS : protein.cdss) {
                     // System.out.println("Current CDS: " + currentCDS.start + "-" + currentCDS.end);
                     // Go through all CDS
                     if (previousCds != null) {
                         if (previousCds.end < currentCDS.start) {
-                            protein.introns.add(new Intron(previousCds.end, currentCDS.start));
+                            gene.introns.add(new Intron(previousCds.end, currentCDS.start));
                             //System.out.println("Intron added to Protein: " + protein.protein_id + ". Intr: " + previousCds.end + "-" + currentCDS.start);
                             intronCounter++;
                         } else {
-                            System.err.println("|findIntrons| Intron start > Intron end. In CDS: " + currentCDS.start + "-" + currentCDS.end + " (" + currentCDS.protein_id + ")");
+                            System.err.println("|findIntrons| Intron start > Intron end. In CDS: " + previousCds.end + "-" + currentCDS.start + " (" + currentCDS.protein_id + ")");
                         }
                     }
                     previousCds = new CDS(currentCDS);
@@ -67,89 +67,84 @@ public class Runner {
     }
 
     private static HashSet<OutputLine> getOutput(HashMap<String, Gene> allGenes) {
+        System.out.println("|getOutput| Started...");
         HashSet<OutputLine> result = new HashSet<>();
         for (Gene gene : allGenes.values()) {
-            for (Protein protein : gene.proteins.values()) {
-                System.out.println("Going through introns in protein: " + protein.protein_id);
-                for (Intron intr : protein.introns) {
-                    // For every Intron
-                    OutputLine l = new OutputLine();
-                    CDS anyCDS = protein.cdss.iterator().next();
-                    l.gene_id = anyCDS.gene_id;
-                    l.gene_symbol = anyCDS.gene_name;
-                    l.chromosome = anyCDS.chr;
-                    l.strand = anyCDS.strand;
-                    l.nprots = gene.proteins.size();
-                    l.ntrans = gene.transcripts.size();
-                    l.sv = new Intron(intr.start, intr.end);
-                    l.wt = new TreeSet<>(new Intron()); // WT introns within the SV intron separated by | as start:end
-                    l.sv_prots = new HashSet<>(); // ids of the SV CDS-s, separated by |
-                    l.wt_prots = new HashSet<>(); // ids of the WT CDS-s, separated by |
-                    l.min_skipped_exon = Integer.MAX_VALUE;
-                    l.max_skipped_exon = Integer.MIN_VALUE;
-                    l.min_skipped_base = Integer.MAX_VALUE;
-                    l.max_skipped_base = Integer.MIN_VALUE;
+            // System.out.println("Going through introns in gene: " + gene.gene_id);
+            for (Intron intr : gene.introns) {
+                // For every Intron
+                OutputLine l = new OutputLine();
+                CDS anyCDS = gene.proteins.values().iterator().next().cdss.iterator().next();
+                l.gene_id = anyCDS.gene_id;
+                l.gene_symbol = anyCDS.gene_name;
+                l.chromosome = anyCDS.chr;
+                l.strand = anyCDS.strand;
+                l.nprots = gene.proteins.size();
+                l.ntrans = gene.transcripts.size();
+                l.sv = new Intron(intr.start, intr.end);
+                l.wt = new TreeSet<>(new Intron()); // WT introns within the SV intron separated by | as start:end
+                l.sv_prots = new HashSet<>(); // ids of the SV CDS-s, separated by |
+                l.wt_prots = new HashSet<>(); // ids of the WT CDS-s, separated by |
+                l.min_skipped_exon = Integer.MAX_VALUE;
+                l.max_skipped_exon = Integer.MIN_VALUE;
+                l.min_skipped_base = Integer.MAX_VALUE;
+                l.max_skipped_base = Integer.MIN_VALUE;
 
-                    for (Protein tempProtein : gene.proteins.values()) {
-                        // System.out.println("\t...checking against tempProtein: " + tempProtein.protein_id + " containing " + tempProtein.cdss.size() + " CDS's.");
-                        // find leftIntronBorder, rightIntronBorder, withinIntronRange
-                        HashSet<CDS> leftIntronBorder = new HashSet<>();
-                        HashSet<CDS> rightIntronBorder = new HashSet<>();
-                        // contains skipped Exons
-                        HashSet<CDS> withinIntronRange = new HashSet<>();
-                        if (!tempProtein.protein_id.equals(protein.protein_id)) {
-                            for (CDS cds : tempProtein.cdss) {
-                                if (cds.end == intr.start || cds.end == intr.start + 1 || cds.end == intr.start - 1)
-                                    leftIntronBorder.add(new CDS(cds));
-                                else if (cds.start == intr.end || cds.start == intr.end + 1 || cds.start == intr.end - 1)
-                                    rightIntronBorder.add(new CDS(cds));
-                                else if (cds.start >= intr.start && cds.end <= intr.end)
-                                    withinIntronRange.add(new CDS(cds));
-                            }
-                        }
-
-                        if (!withinIntronRange.isEmpty()) {
-                            if (withinIntronRange.size() < l.min_skipped_exon)
-                                l.min_skipped_exon = withinIntronRange.size();
-                            if (withinIntronRange.size() > l.max_skipped_exon)
-                                l.max_skipped_exon = withinIntronRange.size();
-
-                            // joint size of all skipped CDS
-                            int jointLengthCDS = 0;
-                            for (CDS aSkippedCDS : withinIntronRange) {
-                                jointLengthCDS += (aSkippedCDS.end - aSkippedCDS.start);
-                                l.wt_prots.add(aSkippedCDS.protein_id);
-                                l.wt.add(new Intron(aSkippedCDS.start, aSkippedCDS.end));
-                            }
-
-                            if (jointLengthCDS < l.min_skipped_base)
-                                l.min_skipped_base = jointLengthCDS;
-                            if (jointLengthCDS > l.max_skipped_base)
-                                l.max_skipped_base = jointLengthCDS;
-
-                            // gather sv_prots
-                            for (CDS cds : leftIntronBorder)
-                                l.sv_prots.add(cds.protein_id);
-                            for (CDS cds : rightIntronBorder)
-                                l.sv_prots.add(cds.protein_id);
-                            l.sv_prots.add(protein.protein_id);
-
-                            // error checking
-                            if (l.gene_id.isEmpty() || l.gene_symbol.isEmpty() || l.chromosome.isEmpty() || l.strand.isEmpty()
-                                    || l.ntrans == 0 || l.ntrans == 0 || l.sv == null || l.wt.isEmpty() || l.sv_prots.isEmpty()
-                                    || l.wt_prots.isEmpty() || l.min_skipped_base < 1 || l.max_skipped_base < 1 || l.min_skipped_exon < 1
-                                    || l.max_skipped_exon < 1) {
-                                System.err.println("|getOutput| One value in OutputLine is empty. Intron: " + intr.start + "-" + intr.end);
-                            }
-//                            System.out.println("Line: " + l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t"
-//                                    + l.nprots + "\t" + l.ntrans + "\t" + l.sv.start + "-" + l.sv.end + "\t" + l.min_skipped_base + "\t"
-//                                    + l.max_skipped_base + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon);
-                            result.add(l);
-                        }
+                for (Protein protein : gene.proteins.values()) {
+                    // System.out.println("\t...checking against tempProtein: " + tempProtein.protein_id + " containing " + tempProtein.cdss.size() + " CDS's.");
+                    // find leftIntronBorder, rightIntronBorder, withinIntronRange
+                    HashSet<CDS> leftIntronBorder = new HashSet<>();
+                    HashSet<CDS> rightIntronBorder = new HashSet<>();
+                    // contains skipped Exons
+                    HashSet<CDS> withinIntronRange = new HashSet<>();
+                    for (CDS cds : protein.cdss) {
+                        if (cds.end == intr.start)
+                            leftIntronBorder.add(new CDS(cds));
+                        else if (cds.start == intr.end)
+                            rightIntronBorder.add(new CDS(cds));
+                        else if (cds.start >= intr.start && cds.end <= intr.end)
+                            withinIntronRange.add(new CDS(cds));
                     }
+
+                    if (!withinIntronRange.isEmpty() && !leftIntronBorder.isEmpty() && !rightIntronBorder.isEmpty()) {
+                        // withinIntronRange--> skippedExons
+                        if (withinIntronRange.size() < l.min_skipped_exon)
+                            l.min_skipped_exon = withinIntronRange.size();
+                        if (withinIntronRange.size() > l.max_skipped_exon)
+                            l.max_skipped_exon = withinIntronRange.size();
+
+                        // joint size of all skipped CDS
+                        int jointLengthCDS = 0;
+                        for (CDS aSkippedCDS : withinIntronRange) {
+                            jointLengthCDS += (aSkippedCDS.end - aSkippedCDS.start);
+                            l.wt_prots.add(aSkippedCDS.protein_id);
+                            l.wt.add(new Intron(aSkippedCDS.start, aSkippedCDS.end));
+                        }
+
+                        if (jointLengthCDS < l.min_skipped_base)
+                            l.min_skipped_base = jointLengthCDS;
+                        if (jointLengthCDS > l.max_skipped_base)
+                            l.max_skipped_base = jointLengthCDS;
+
+                    } else if (withinIntronRange.isEmpty() && !leftIntronBorder.isEmpty() && !rightIntronBorder.isEmpty()) {
+                        // gather sv_prots
+                        for (CDS cds : leftIntronBorder)
+                            l.sv_prots.add(cds.protein_id);
+                        for (CDS cds : rightIntronBorder)
+                            l.sv_prots.add(cds.protein_id);
+                    }
+                }
+                if (l.max_skipped_exon > 0) {
+                    // System.out.println("Line: " + l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t"+ l.nprots + "\t" + l.ntrans + "\t" + l.sv.start + "-" + l.sv.end + "\t" + l.min_skipped_base + "\t"+ l.max_skipped_base + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon);
+                    // error checking
+                    if (l.gene_id.isEmpty() || l.gene_symbol.isEmpty() || l.chromosome.isEmpty() || l.strand.isEmpty() || l.ntrans == 0 || l.ntrans == 0 || l.wt.isEmpty() || l.sv_prots.isEmpty() || l.wt_prots.isEmpty() || l.min_skipped_base < 1 || l.max_skipped_base < 1 || l.min_skipped_exon < 1 || l.max_skipped_exon < 1) {
+                        System.err.println("|getOutput| One value in OutputLine is empty. Intron: " + intr.start + "-" + intr.end);
+                    }
+                    result.add(l);
                 }
             }
         }
+        System.out.println("|getOutput| Finished. Added " + result.size() + " result lines.");
         return result;
     }
 
@@ -280,9 +275,9 @@ public class Runner {
                 }
 
                 // Convert the HashSet<String> wt_prots to String
-                String wt_string = Integer.toString(l.sv.start);
+                String wt_string = Integer.toString(l.sv.start + 1);
                 for (Intron intr : l.wt) {
-                    wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end);
+                    wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end + 1);
                 }
                 wt_string += ":" + Integer.toString(l.sv.end);
 
