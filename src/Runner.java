@@ -115,11 +115,20 @@ public class Runner {
 
                         // joint size of all skipped CDS
                         int jointLengthCDS = 0;
+                        TreeSet<Intron> tempWt = new TreeSet<>(new Intron()); // contains the wt's for current protein
                         for (CDS aSkippedCDS : withinIntronRange) {
                             jointLengthCDS += (aSkippedCDS.end - aSkippedCDS.start) + 1; // because CDS.start already counts as first base
                             l.wt_prots.add(aSkippedCDS.protein_id);
-                            l.wt.add(new Intron(aSkippedCDS.start, aSkippedCDS.end));
+                            tempWt.add(new Intron(aSkippedCDS.start, aSkippedCDS.end));
                         }
+
+                        // Postprocessing: prepend Intron-start and append Intron-end to wt-Introns
+                        int previousIntronEnd = l.sv.start + 1;
+                        for (Intron i : tempWt) {
+                            l.wt.add(new Intron(previousIntronEnd, i.start));
+                            previousIntronEnd = i.end + 1;
+                        }
+                        l.wt.add(new Intron(previousIntronEnd, l.sv.end)); //Add last Intron
 
                         if (jointLengthCDS < l.min_skipped_base)
                             l.min_skipped_base = jointLengthCDS;
@@ -277,10 +286,16 @@ public class Runner {
             sv_prots_string = sv_prots_string.substring(0, sv_prots_string.length() - 1);
 
         // Convert the HashSet<String> wt_prots to String
-        String wt_string = Integer.toString(l.sv.start + 1);
+//        String wt_string = Integer.toString(l.sv.start + 1);
+//        for (Intron intr : l.wt)
+//            wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end + 1);
+//        wt_string += ":" + Integer.toString(l.sv.end);
+        String wt_string = "";
         for (Intron intr : l.wt)
-            wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end + 1);
-        wt_string += ":" + Integer.toString(l.sv.end);
+            wt_string += Integer.toString(intr.start) + ":" + Integer.toString(intr.end) + "|";
+        // crop last "|"
+        if (wt_string.endsWith("|"))
+            wt_string = wt_string.substring(0, wt_string.length() - 1);
 
         return l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t" + l.nprots + "\t" + l.ntrans
                 + "\t" + (l.sv.start + 1) + ":" + l.sv.end + "\t" + wt_string + "\t" + wt_prots_string + "\t" + sv_prots_string
