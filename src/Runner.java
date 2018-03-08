@@ -116,7 +116,7 @@ public class Runner {
                         // joint size of all skipped CDS
                         int jointLengthCDS = 0;
                         for (CDS aSkippedCDS : withinIntronRange) {
-                            jointLengthCDS += (aSkippedCDS.end - aSkippedCDS.start);
+                            jointLengthCDS += (aSkippedCDS.end - aSkippedCDS.start) + 1; // because CDS.start already counts as first base
                             l.wt_prots.add(aSkippedCDS.protein_id);
                             l.wt.add(new Intron(aSkippedCDS.start, aSkippedCDS.end));
                         }
@@ -135,9 +135,6 @@ public class Runner {
                     }
                 }
                 if (l.max_skipped_exon > 0) {
-                    //
-                    //
-                    // System.out.println("added line: "+getOutputString(l));
                     // error checking
                     checkIfOutputLineIsEmpty(l);
                     result.add(l);
@@ -287,7 +284,7 @@ public class Runner {
 
         return l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t" + l.nprots + "\t" + l.ntrans
                 + "\t" + (l.sv.start + 1) + ":" + l.sv.end + "\t" + wt_string + "\t" + wt_prots_string + "\t" + sv_prots_string
-                + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon + "\t" + (l.min_skipped_base + 1) + "\t" + (l.max_skipped_base + 1);
+                + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon + "\t" + l.min_skipped_base + "\t" + l.max_skipped_base;
     }
 
     public static void checkIfOutputLineIsEmpty(OutputLine l) {
@@ -300,9 +297,9 @@ public class Runner {
             errorMessage = errorMessage.concat("chromosome ");
         if (l.strand.isEmpty())
             errorMessage = errorMessage.concat("strand ");
-        if (l.nprots == 0)
+        if (l.nprots < 1)
             errorMessage = errorMessage.concat("nprots ");
-        if (l.ntrans == 0)
+        if (l.ntrans < 1)
             errorMessage = errorMessage.concat("ntrans ");
         if (l.sv.start < 1 || l.sv.end < 1)
             errorMessage = errorMessage.concat("sv (start or end) ");
@@ -321,7 +318,7 @@ public class Runner {
         if (l.max_skipped_base < 1 || l.max_skipped_base > 10000000)
             errorMessage = errorMessage.concat("max_skipped_base ");
         if (errorMessage.length() > 0) {
-            System.out.println("|checkIfOutputLineIsEmpty| Empty value in: \'" + errorMessage + "\'. Line: " + getOutputString(l));
+            System.out.println("|checkIfOutputLineIsEmpty| Empty value in: \' " + errorMessage + "\'. Line: " + getOutputString(l));
         }
     }
 }
