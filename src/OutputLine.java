@@ -9,7 +9,7 @@ public class OutputLine {
     int nprots; // number of annotated CDS in the gene
     int ntrans; // number of annotated transcripts in the gene
     Intron sv; // SV intron as start:end
-    // ATTENTION: Contains NOT the real exons, but the respective CDS-borders instead. Correction is performed in writeOutput()
+    // ATTENTION: Contains NOT the real Introns, but the respective CDS-borders instead. Correction is performed in writeOutput()
     TreeSet<Intron> wt; // WT introns within the SV intron separated by | as start:end
     HashSet<String> sv_prots; // ids of the SV CDS-s, separated by |
     HashSet<String> wt_prots; // ids of the WT CDS-s, separated by |
