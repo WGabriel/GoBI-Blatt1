@@ -135,11 +135,11 @@ public class Runner {
                     }
                 }
                 if (l.max_skipped_exon > 0) {
-                    // System.out.println("Line: " + l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t"+ l.nprots + "\t" + l.ntrans + "\t" + l.sv.start + "-" + l.sv.end + "\t" + l.min_skipped_base + "\t"+ l.max_skipped_base + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon);
+                    //
+                    //
+                    // System.out.println("added line: "+getOutputString(l));
                     // error checking
-                    if (l.gene_id.isEmpty() || l.gene_symbol.isEmpty() || l.chromosome.isEmpty() || l.strand.isEmpty() || l.ntrans == 0 || l.ntrans == 0 || l.wt.isEmpty() || l.sv_prots.isEmpty() || l.wt_prots.isEmpty() || l.min_skipped_base < 1 || l.max_skipped_base < 1 || l.min_skipped_exon < 1 || l.max_skipped_exon < 1) {
-                        System.err.println("|getOutput| One value in OutputLine is empty. Intron: " + intr.start + "-" + intr.end);
-                    }
+                    checkIfOutputLineIsEmpty(l);
                     result.add(l);
                 }
             }
@@ -165,7 +165,6 @@ public class Runner {
                 linecounter++;
                 // ignore comments (beginning with "#")
                 if (!line.startsWith("#")) {
-                    // For every line in input
                     String[] tabSeparated = line.split("\\t");
                     String seqname = tabSeparated[0];
                     // String source = tabSeparated[1];
@@ -185,7 +184,6 @@ public class Runner {
                     String gene_name = "";
                     // gather parameters from String "attribute"
                     String[] attributeSeparated = attribute.split(";");
-                    // search in attributeSeparated for parameters
                     for (String attr : attributeSeparated) {
                         if (attr.contains("protein_id")) {
                             // get only value between quotation marks
@@ -215,7 +213,7 @@ public class Runner {
                         // Construct cds and add to exonList
                         CDS cds = new CDS(seqname, start, end, strand, protein_id, transcript_id, transcript_name, gene_id, gene_name);
                         // Check, if all cds values are actually filled
-                        if (cds.start == 0 || cds.end == 0 || cds.chr.isEmpty() || cds.strand.isEmpty() || cds.protein_id.isEmpty() || cds.transcript_id.isEmpty() || cds.gene_id.isEmpty()) {
+                        if (cds.chr.isEmpty() || cds.start < 1 || cds.end < 1 || cds.strand.isEmpty() || cds.protein_id.isEmpty() || cds.transcript_id.isEmpty() || cds.gene_id.isEmpty()) {
                             System.err.println("CDS in line " + linecounter + " has an empty value!");
                         }
                         // Create data structure allGenes, contains proteins, contains cdss
@@ -254,39 +252,7 @@ public class Runner {
             PrintWriter out = new PrintWriter(tsvOutput, "UTF-8");
             out.println("id\tsymbol\tchr\tstrand\tnprots\tntrans\tSV\tWT\tWT_prots\tSV_prots\tmin_skipped_exon\tmax_skipped_exon\tmin_skipped_bases\tmax_skipped_bases");
             for (OutputLine l : outputLines) {
-                // Convert the HashSet<String> wt_prots to String
-                String wt_prots_string = "";
-                for (String s : l.wt_prots) {
-                    wt_prots_string = wt_prots_string.concat(s).concat("|");
-                }
-                // crop last "|"
-                if (wt_prots_string.endsWith("|")) {
-                    wt_prots_string = wt_prots_string.substring(0, wt_prots_string.length() - 1);
-                }
-
-                // Convert the HashSet<String> sv_prots to String
-                String sv_prots_string = "";
-                for (String s : l.sv_prots) {
-                    sv_prots_string = sv_prots_string.concat(s).concat("|");
-                }
-                // crop last "|"
-                if (sv_prots_string.endsWith("|")) {
-                    sv_prots_string = sv_prots_string.substring(0, sv_prots_string.length() - 1);
-                }
-
-                // Convert the HashSet<String> wt_prots to String
-                String wt_string = Integer.toString(l.sv.start + 1);
-                for (Intron intr : l.wt) {
-                    wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end + 1);
-                }
-                wt_string += ":" + Integer.toString(l.sv.end);
-
-                String thisLine = l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand
-                        + "\t" + l.nprots + "\t" + l.ntrans + "\t" + (l.sv.start + 1) + ":" + l.sv.end + "\t"
-                        + wt_string + "\t" + wt_prots_string + "\t" + sv_prots_string + "\t"
-                        + l.min_skipped_exon + "\t" + l.max_skipped_exon + "\t" + (l.min_skipped_base + 1)
-                        + "\t" + (l.max_skipped_base + 1);
-                out.println(thisLine);
+                out.println(getOutputString(l));
                 //System.out.println(thisLine);
             }
             out.close();
@@ -296,4 +262,66 @@ public class Runner {
         System.out.println("|writeOutput| Finished.");
     }
 
+    public static String getOutputString(OutputLine l) {
+        // Convert the HashSet<String> wt_prots to String
+        String wt_prots_string = "";
+        for (String s : l.wt_prots)
+            wt_prots_string = wt_prots_string.concat(s).concat("|");
+        // crop last "|"
+        if (wt_prots_string.endsWith("|"))
+            wt_prots_string = wt_prots_string.substring(0, wt_prots_string.length() - 1);
+
+        // Convert the HashSet<String> sv_prots to String
+        String sv_prots_string = "";
+        for (String s : l.sv_prots)
+            sv_prots_string = sv_prots_string.concat(s).concat("|");
+        // crop last "|"
+        if (sv_prots_string.endsWith("|"))
+            sv_prots_string = sv_prots_string.substring(0, sv_prots_string.length() - 1);
+
+        // Convert the HashSet<String> wt_prots to String
+        String wt_string = Integer.toString(l.sv.start + 1);
+        for (Intron intr : l.wt)
+            wt_string += ":" + Integer.toString(intr.start) + "|" + Integer.toString(intr.end + 1);
+        wt_string += ":" + Integer.toString(l.sv.end);
+
+        return l.gene_id + "\t" + l.gene_symbol + "\t" + l.chromosome + "\t" + l.strand + "\t" + l.nprots + "\t" + l.ntrans
+                + "\t" + (l.sv.start + 1) + ":" + l.sv.end + "\t" + wt_string + "\t" + wt_prots_string + "\t" + sv_prots_string
+                + "\t" + l.min_skipped_exon + "\t" + l.max_skipped_exon + "\t" + (l.min_skipped_base + 1) + "\t" + (l.max_skipped_base + 1);
+    }
+
+    public static void checkIfOutputLineIsEmpty(OutputLine l) {
+        String errorMessage = "";
+        if (l.gene_id.isEmpty())
+            errorMessage = errorMessage.concat("gene_id ");
+        if (l.gene_symbol.isEmpty())
+            errorMessage = errorMessage.concat("gene_symbol ");
+        if (l.chromosome.isEmpty())
+            errorMessage = errorMessage.concat("chromosome ");
+        if (l.strand.isEmpty())
+            errorMessage = errorMessage.concat("strand ");
+        if (l.nprots == 0)
+            errorMessage = errorMessage.concat("nprots ");
+        if (l.ntrans == 0)
+            errorMessage = errorMessage.concat("ntrans ");
+        if (l.sv.start < 1 || l.sv.end < 1)
+            errorMessage = errorMessage.concat("sv (start or end) ");
+        if (l.wt.isEmpty())
+            errorMessage = errorMessage.concat("wt (introns) ");
+        if (l.sv_prots.isEmpty())
+            errorMessage = errorMessage.concat("sv_prots (protein_ids) ");
+        if (l.wt_prots.isEmpty())
+            errorMessage = errorMessage.concat("wt_prots (protein_ids) ");
+        if (l.min_skipped_exon < 1 || l.min_skipped_exon > 10000000)
+            errorMessage = errorMessage.concat("min_skipped_exon ");
+        if (l.max_skipped_exon < 1 || l.max_skipped_exon > 10000000)
+            errorMessage = errorMessage.concat("min_skipped_exon ");
+        if (l.min_skipped_base < 1 || l.min_skipped_base > 10000000)
+            errorMessage = errorMessage.concat("min_skipped_base ");
+        if (l.max_skipped_base < 1 || l.max_skipped_base > 10000000)
+            errorMessage = errorMessage.concat("max_skipped_base ");
+        if (errorMessage.length() > 0) {
+            System.out.println("|checkIfOutputLineIsEmpty| Empty value in: \'" + errorMessage + "\'. Line: " + getOutputString(l));
+        }
+    }
 }

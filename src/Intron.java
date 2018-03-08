@@ -18,7 +18,7 @@ public class Intron implements Comparator<Intron> {
     }
 
     public Intron() {
-        super();
+//        super();
     }
 
     @Override
