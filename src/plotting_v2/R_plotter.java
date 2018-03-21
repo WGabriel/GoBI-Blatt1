@@ -7,7 +7,6 @@ public class R_plotter implements Runnable {
 
     public static void main(String[] args) {
         // ATTENTION: To swap between ExonSkipping<->BaseSkipping: modify the values "isExon", "xlim" (R) and "xaxp" (R)
-
         System.out.println("Main started.");
 
         //Add all files in output to ArrayList "outputs"
@@ -33,6 +32,7 @@ public class R_plotter implements Runnable {
         for (Map.Entry<Integer, Event> entry : allSkippings.entrySet()) {
             //System.out.println("Skippings: " + entry.getKey() + " Event: " + entry.getValue().numberOfEvents + " " + entry.getValue().geneIds.toString());
         }
+        // ---END: Gather information for the plots---
 
         // ###########RESULTS###########
         // Max Events: 17424
@@ -40,10 +40,11 @@ public class R_plotter implements Runnable {
         // Max BaseSkipping: 26106
         // ###########RESULTS###########
 
+
+        // ---Create and execute R-Command---
         String rCom = "png(\"C:/Users/Gabriel/Desktop/GoBI/Blatt1/plots-v2/R/test.png\", width = 1200, height = 548)\n"
                 + "plot(1, 1, type = \"n\", xlim=c(0,170),xaxp=c(0,170,17),ylim=c(0,17424),yaxp=c(0,17500,7),ann=F,panel.first=grid())\n"
                 + "title(main=\"Empirical Cumulative Distribution Function\",xlab=\"Max. number of Skipped Bases\",ylab=\"Cumulative number of events\")\n";
-
 
         ArrayList<String> colors = new ArrayList<>(Arrays.asList("pink", "blue", "orange", "violet", "green", "red"));
         int colorcounter = 0;
@@ -63,7 +64,6 @@ public class R_plotter implements Runnable {
             colorcounter++;
         }
 
-
         rCom += "legend(\"bottomright\","
                 + "title=\"GTF source\","
                 + "legend=c(\"gencode.v25\",\"Homo_sapiens.GRCh37.67\",\"Homo_sapiens.GRCh37.75\",\"Homo_sapiens.GRCh38.86\",\"Homo_sapiens.GRCh38.90\",\"Mus_musculus.GRCm38.75\"),"
@@ -74,6 +74,7 @@ public class R_plotter implements Runnable {
         File rScript = new File("C:\\Users\\Gabriel\\Desktop\\GoBI\\Blatt1\\plots-v2\\R\\myScript.R");
         writeStringToFile(rCom, rScript);
         runRscript(rScript);
+        // ---END: Create and execute R-Command---
     }
 
     private static void runRscript(File script) {
@@ -146,65 +147,6 @@ public class R_plotter implements Runnable {
     @Override
     public void run() {
     }
-
-
-    /*
-    finds the top 10 genes for max ExonSkipping and BasePairs
-        Map<String, Integer> sortedExons = sortByValues(exonsSkippings);
-        Map<String, Integer> sortedBases = sortByValues(baseSkippings);
-
-        System.out.println("---Most Exons:---");
-        int counter = 1;
-        for (Map.Entry<String, Integer> entry : sortedExons.entrySet()) {
-            if (counter < 11) {
-                // System.out.println(counter + ". Gene: " + entry.getKey() + " | #Exons: " + entry.getValue());
-                String gene_id = entry.getKey();
-                if (gene_id.contains(".")) {
-                    // chops ".25" from ENSG00000155657.25
-                    gene_id = gene_id.substring(0, gene_id.lastIndexOf('.'));
-                }
-                System.out.println("<li><a href=\"http://www.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=" + gene_id + "\">" + gene_id + "(" + entry.getValue() + " Exons)</a></li>");
-                counter++;
-            }
-        }
-        System.out.println("---Most Bases:---");
-        counter = 1;
-        for (Map.Entry<String, Integer> entry : sortedBases.entrySet()) {
-            if (counter < 11) {
-                // System.out.println(counter + ": Gene: " + entry.getKey() + " | #Bases: " + entry.getValue());
-                String gene_id = entry.getKey();
-                if (gene_id.contains(".")) {
-                    // chops ".25" from ENSG00000155657.25
-                    gene_id = gene_id.substring(0, gene_id.lastIndexOf('.'));
-                }
-                System.out.println("<li><a href=\"http://www.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=" + gene_id + "\">" + gene_id + "(" + entry.getValue() + " Bases)</a></li>");
-                counter++;
-            }
-        }
-        System.out.println("Finished: Parsing file.");
-    }
-    */
-
-    /*
-    private static HashMap sortByValues(HashMap map) {
-        // sorts a given hashmap by value (ascending, if value = Integer)
-        List list = new LinkedList(map.entrySet());
-        // Defined Custom Comparator here
-        Collections.sort(list, new Comparator() {
-            public int compare(Object o1, Object o2) {
-                return ((Comparable) ((Map.Entry) (o2)).getValue()).compareTo(((Map.Entry) (o1)).getValue());
-            }
-        });
-
-        // Here I am copying the sorted list in HashMap using LinkedHashMap to preserve the insertion order
-        HashMap sortedHashMap = new LinkedHashMap();
-        for (Object aList : list) {
-            Map.Entry entry = (Map.Entry) aList;
-            sortedHashMap.put(entry.getKey(), entry.getValue());
-        }
-        return sortedHashMap;
-    }
-    */
 
 }
 
